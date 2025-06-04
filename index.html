@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chakra Yoga Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Caveat Brush', cursive;
+            overflow: hidden; /* Prevent scrollbars from canvas overflow */
+        }
+        .chakra-point {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border-width: 3px; /* Simulating thick paint outline */
+        }
+        .chakra-point:hover {
+            transform: scale(1.2);
+        }
+        .modal-content {
+            border-width: 4px; /* Thick paint border for modal */
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.5); /* Yellowish glow */
+        }
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-body::-webkit-scrollbar-track {
+            background: #0c4a6e;
+        }
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #facc15;
+            border-radius: 4px;
+        }
+        .modal-body {
+            scrollbar-width: thin;
+            scrollbar-color: #facc15 #0c4a6e;
+        }
+        .body-outline-container {
+            position: relative;
+            width: 150px;
+            height: 400px;
+            margin: 0 auto;
+        }
+        .chakra-active {
+            animation: pulseChakra 1.5s infinite;
+        }
+        @keyframes pulseChakra {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 15px 10px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+        .van-gogh-button {
+            border-width: 3px;
+            border-style: solid;
+            box-shadow: 2px 2px 0px 0px #0369a1;
+            transition: all 0.1s ease-in-out;
+        }
+        .van-gogh-button:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px 0px #0369a1;
+        }
+    </style>
+</head>
+<body class="bg-sky-900 text-yellow-300 flex flex-col items-center justify-center min-h-screen p-4 overflow-hidden">
+
+    <canvas id="vanGoghCanvas" class="absolute top-0 left-0 w-full h-full -z-10"></canvas>
+
+    <header class="text-center mb-8 z-10">
+        <h1 class="text-5xl md:text-6xl text-yellow-400" style="text-shadow: 2px 2px #0c4a6e;">Chakra Journey</h1>
+        <p class="text-xl text-sky-200 mt-2">Tap a chakra to explore its wisdom</p>
+    </header>
+
+    <main class="relative z-10 flex justify-center items-center w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+        <div class="body-outline-container"></div>
+    </main>
+
+    <div id="chakraModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden">
+        <div class="modal-content bg-sky-800 border-yellow-400 rounded-lg p-6 md:p-8 w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modalChakraName" class="text-3xl md:text-4xl text-yellow-400">Chakra Name</h2>
+                <button id="closeModalButton" class="van-gogh-button text-yellow-300 border-yellow-400 hover:bg-yellow-400 hover:text-sky-900 px-3 py-1 rounded-md text-2xl">&times;</button>
+            </div>
+            <div class="modal-body overflow-y-auto text-sky-100 text-lg md:text-xl space-y-3 pr-2">
+                <p><strong>Color:</strong> <span id="modalChakraColorName"></span> <span id="modalChakraColorSwatch" class="inline-block w-5 h-5 rounded-full ml-2 border-2 border-white"></span></p>
+                <p><strong>Sanskrit Name:</strong> <span id="modalChakraSanskritName"></span></p>
+                <p><strong>Location:</strong> <span id="modalChakraLocation"></span></p>
+                <p><strong>Element:</strong> <span id="modalChakraElement"></span></p>
+                <p><strong>Mantra:</strong> <span id="modalChakraMantra"></span></p>
+                <div class="mt-3">
+                    <h3 class="text-2xl text-yellow-300 mb-1">Meditation Focus:</h3>
+                    <p id="modalChakraMeditation" class="text-sky-200"></p>
+                </div>
+                <div class="mt-3">
+                    <h3 class="text-2xl text-yellow-300 mb-1">Affirmation:</h3>
+                    <p id="modalChakraAffirmation" class="italic text-sky-200"></p>
+                </div>
+                <div class="mt-3">
+                    <h3 class="text-2xl text-yellow-300 mb-1">Associated Yoga Poses:</h3>
+                    <ul id="modalChakraPoses" class="list-disc list-inside text-sky-200 space-y-1"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('vanGoghCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        const chakras = [
+            {
+                id: 'root',
+                name: 'Root Chakra',
+                sanskritName: 'Muladhara (मूलाधार)',
+                colorName: 'Red',
+                colorValue: '#DC2626',
+                borderColor: 'border-red-700',
+                glowColor: 'shadow-2xl shadow-red-600/80',
+                location: 'Base of Spine',
+                element: 'Earth',
+                mantra: 'LAM (लं)',
+                meditation: 'Focus on grounding, stability, and your connection to the earth. Visualize roots extending from your body deep into the ground, anchoring you firmly.',
+                affirmation: 'I am grounded. I am safe. I am secure. I have a right to be here.',
+                poses: ['Mountain Pose (Tadasana)', 'Warrior I (Virabhadrasana I)', 'Child\'s Pose (Balasana)', 'Corpse Pose (Savasana)'],
+                position: { top: '88%', left: '50%' }
+            },
+            {
+                id: 'sacral',
+                name: 'Sacral Chakra',
+                sanskritName: 'Svadhisthana (स्वाधिष्ठान)',
+                colorName: 'Orange',
+                colorValue: '#EA580C',
+                borderColor: 'border-orange-700',
+                glowColor: 'shadow-2xl shadow-orange-600/80',
+                location: 'Lower Abdomen',
+                element: 'Water',
+                mantra: 'VAM (वं)',
+                meditation: 'Focus on the flow of your emotions and creativity. Visualize a vibrant orange light illuminating your lower abdomen.',
+                affirmation: 'I embrace pleasure and abundance. I am creative and joyful.',
+                poses: ['Cobbler\'s Pose (Baddha Konasana)', 'Goddess Pose (Utkata Konasana)', 'Reverse Warrior (Viparita Virabhadrasana)'],
+                position: { top: '75%', left: '50%' }
+            },
+            {
+                id: 'solar-plexus',
+                name: 'Solar Plexus Chakra',
+                sanskritName: 'Manipura (मणिपूर)',
+                colorName: 'Yellow',
+                colorValue: '#FACC15',
+                borderColor: 'border-yellow-600',
+                glowColor: 'shadow-2xl shadow-yellow-400/80',
+                location: 'Upper Abdomen',
+                element: 'Fire',
+                mantra: 'RAM (रं)',
+                meditation: 'Focus on your personal power and self-esteem.',
+                affirmation: 'I am powerful and confident. I honor myself.',
+                poses: ['Boat Pose (Paripurna Navasana)', 'Sun Salutation (Surya Namaskar)', 'Plank Pose (Phalakasana)'],
+                position: { top: '62%', left: '50%' }
+            },
+            {
+                id: 'heart',
+                name: 'Heart Chakra',
+                sanskritName: 'Anahata (अनाहत)',
+                colorName: 'Green',
+                colorValue: '#16A34A',
+                borderColor: 'border-green-700',
+                glowColor: 'shadow-2xl shadow-green-600/80',
+                location: 'Center of Chest',
+                element: 'Air',
+                mantra: 'YAM (यं)',
+                meditation: 'Focus on love, compassion, and forgiveness.',
+                affirmation: 'I am open to love. I forgive myself and others.',
+                poses: ['Camel Pose (Ustrasana)', 'Cobra Pose (Bhujangasana)', 'Upward-Facing Dog (Urdhva Mukha Svanasana)'],
+                position: { top: '49%', left: '50%' }
+            },
+            {
+                id: 'throat',
+                name: 'Throat Chakra',
+                sanskritName: 'Vishuddha (विशुद्ध)',
+                colorName: 'Blue',
+                colorValue: '#2563EB',
+                borderColor: 'border-blue-700',
+                glowColor: 'shadow-2xl shadow-blue-600/80',
+                location: 'Throat',
+                element: 'Ether (Space)',
+                mantra: 'HAM (हं)',
+                meditation: 'Focus on clear communication and self-expression.',
+                affirmation: 'I speak my truth with clarity and confidence.',
+                poses: ['Shoulder Stand (Sarvangasana)', 'Plough Pose (Halasana)', 'Fish Pose (Matsyasana)'],
+                position: { top: '36%', left: '50%' }
+            },
+            {
+                id: 'third-eye',
+                name: 'Third Eye Chakra',
+                sanskritName: 'Ajna (आज्ञा)',
+                colorName: 'Indigo',
+                colorValue: '#4F46E5',
+                borderColor: 'border-indigo-700',
+                glowColor: 'shadow-2xl shadow-indigo-600/80',
+                location: 'Between Eyebrows',
+                element: 'Light',
+                mantra: 'OM (ॐ) or AUM',
+                meditation: 'Focus on intuition, insight, and wisdom.',
+                affirmation: 'I trust my intuition. I see clearly.',
+                poses: ['Downward-Facing Dog (Adho Mukha Svanasana)', 'Headstand (Sirsasana)', 'Easy Pose (Sukhasana)'],
+                position: { top: '23%', left: '50%' }
+            },
+            {
+                id: 'crown',
+                name: 'Crown Chakra',
+                sanskritName: 'Sahasrara (सहस्रार)',
+                colorName: 'Violet or White',
+                colorValue: '#9333EA',
+                borderColor: 'border-purple-700',
+                glowColor: 'shadow-2xl shadow-purple-600/80',
+                location: 'Top of Head',
+                element: 'Consciousness (Thought)',
+                mantra: 'OM (ॐ) or Silence',
+                meditation: 'Focus on spiritual connection and universal consciousness.',
+                affirmation: 'I am connected to the divine. I am infinite and boundless.',
+                poses: ['Lotus Pose (Padmasana)', 'Corpse Pose (Savasana)', 'Meditation (Dhyana)'],
+                position: { top: '10%', left: '50%' }
+            }
+        ];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 5 + 2;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                const colors = ['#0c4a6e', '#075985', '#0369a1', '#facc15', '#fde047', '#fefce8', '#a3e635', '#fb923c'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.length = Math.random() * 20 + 10;
+                this.angle = Math.random() * Math.PI * 2;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width + this.length || this.x < -this.length || this.y > canvas.height + this.length || this.y < -this.length) {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.speedX = Math.random() * 1 - 0.5;
+                    this.speedY = Math.random() * 1 - 0.5;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.rect(-this.length / 2, -this.size / 2, this.length, this.size);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const numberOfParticles = Math.floor((canvas.width * canvas.height) / 10000);
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            initParticles();
+        });
+        
+        resizeCanvas();
+        initParticles();
+        animateParticles();
+
+        const modal = document.getElementById('chakraModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const bodyOutlineContainer = document.querySelector('.body-outline-container');
+
+        chakras.forEach(chakra => {
+            const point = document.createElement('button');
+            point.setAttribute('aria-label', `Open ${chakra.name} details`);
+            point.className = `chakra-point absolute w-8 h-8 md:w-10 md:h-10 rounded-full transform -translate-x-1/2 -translate-y-1/2 ${chakra.borderColor} ${chakra.glowColor}`;
+            point.style.backgroundColor = chakra.colorValue;
+            point.style.top = chakra.position.top;
+            point.style.left = chakra.position.left;
+            point.addEventListener('click', () => openModal(chakra));
+            bodyOutlineContainer.appendChild(point);
+        });
+
+        let activeChakraPoint = null;
+
+        function openModal(chakra) {
+            document.getElementById('modalChakraName').textContent = chakra.name;
+            document.getElementById('modalChakraSanskritName').textContent = chakra.sanskritName;
+            document.getElementById('modalChakraColorName').textContent = chakra.colorName;
+            document.getElementById('modalChakraColorSwatch').style.backgroundColor = chakra.colorValue;
+            document.getElementById('modalChakraLocation').textContent = chakra.location;
+            document.getElementById('modalChakraElement').textContent = chakra.element;
+            document.getElementById('modalChakraMantra').textContent = chakra.mantra;
+            document.getElementById('modalChakraMeditation').textContent = chakra.meditation;
+            document.getElementById('modalChakraAffirmation').textContent = chakra.affirmation;
+
+            const posesList = document.getElementById('modalChakraPoses');
+            posesList.innerHTML = '';
+            chakra.poses.forEach(pose => {
+                const li = document.createElement('li');
+                li.textContent = pose;
+                posesList.appendChild(li);
+            });
+
+            modal.classList.remove('hidden');
+
+            if (activeChakraPoint) {
+                activeChakraPoint.classList.remove('chakra-active');
+                activeChakraPoint.style.transform = 'scale(1) translateX(-50%) translateY(-50%)';
+            }
+            const chakraButtons = bodyOutlineContainer.querySelectorAll('button');
+            chakraButtons.forEach(btn => {
+                if (btn.getAttribute('aria-label').includes(chakra.name)) {
+                    activeChakraPoint = btn;
+                    activeChakraPoint.classList.add('chakra-active');
+                    activeChakraPoint.style.transform = 'scale(1.3) translateX(-50%) translateY(-50%)';
+                }
+            });
+        }
+
+        closeModalButton.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            if (activeChakraPoint) {
+                activeChakraPoint.classList.remove('chakra-active');
+                activeChakraPoint.style.transform = 'scale(1) translateX(-50%) translateY(-50%)';
+                activeChakraPoint = null;
+            }
+        });
+
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeModalButton.click();
+            }
+        });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModalButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
